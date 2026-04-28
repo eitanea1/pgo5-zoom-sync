@@ -29,19 +29,19 @@
     --purple:           #6B5BD6;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:#1d1f22;font-family:'Inter',system-ui,sans-serif;color:var(--ink);}
-  /* The whole desktop frame is letterboxed inside the viewport */
+  html,body{margin:0;padding:0;background:#f0f1f4;font-family:'Inter',system-ui,sans-serif;color:var(--ink);min-height:100vh;}
+  /* Desktop fills the viewport — feels like a native app, not a mock window */
   .desktop{
-    width:1440px; height:900px; margin:0 auto;
+    width:100vw; min-height:100vh; margin:0;
     background: #f0f1f4;
     position:relative; overflow:hidden;
-    box-shadow: 0 0 0 1px #2a2c30;
   }
 
-  /* ---------- macOS title bar ---------- */
+  /* macOS title bar — hidden in fullscreen mode */
   .title-bar{
+    display:none;
     height:28px; background:#E8E9EC; border-bottom:1px solid #d3d5d9;
-    display:flex; align-items:center; padding: 0 12px;
+    align-items:center; padding: 0 12px;
     position:relative;
   }
   .traffic{display:flex; gap:8px;}
@@ -99,7 +99,7 @@
   /* ---------- Layout: sidebar | main | chat ---------- */
   .layout{
     display:grid; grid-template-columns: 240px 1fr 320px;
-    height: calc(900px - 28px - 56px);
+    height: calc(100vh - 56px);
   }
 
   /* ---------- Left sidebar ---------- */
@@ -299,7 +299,7 @@
   /* ============== POPUP / DESKTOP DIM =================== */
   /* ===================================================== */
   .scrim{
-    position:absolute; inset:0; top:28px; /* below mac title bar */
+    position:fixed; inset:0;
     background: rgba(15, 20, 30, .35);
     backdrop-filter: blur(1.5px);
     z-index:50;
