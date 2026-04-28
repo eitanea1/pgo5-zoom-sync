@@ -1,0 +1,27 @@
+/* Optimize for MacBook Retina Display */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Ensure sharp text */
+body {
+  font-feature-settings: "liga" 1, "kern" 1;
+  text-size-adjust: 100%;
+}
+
+/* High-quality shadows for MacBook display */
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Crisp borders */
+.border {
+  border-width: 1px;
+}

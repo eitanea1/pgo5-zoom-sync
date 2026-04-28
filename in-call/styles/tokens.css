@@ -1,0 +1,155 @@
+/* ========================================================================
+   Zoom Sync — Design Tokens
+   In-meeting AI task management. Dark, data-dense, decisive.
+   ======================================================================== */
+
+:root {
+  /* ---------- Color: Zoom brand ---------- */
+  --zs-blue-500: #2D8CFF;        /* Zoom primary */
+  --zs-blue-600: #0B5CFF;        /* hover / pressed */
+  --zs-blue-400: #5AA8FF;        /* light accent on dark */
+  --zs-blue-050: rgba(45, 140, 255, 0.08);
+  --zs-blue-100: rgba(45, 140, 255, 0.16);
+  --zs-blue-200: rgba(45, 140, 255, 0.24);
+
+  /* ---------- Color: Surfaces (dark, the default meeting chrome) ---------- */
+  --zs-bg-0:   #0A0D12;          /* page / stage background */
+  --zs-bg-1:   #10141B;          /* panels */
+  --zs-bg-2:   #161B23;          /* elevated surface */
+  --zs-bg-3:   #1E242D;          /* cards on panels */
+  --zs-bg-4:   #262D37;          /* hover / pressed on cards */
+  --zs-line:   rgba(255, 255, 255, 0.08);
+  --zs-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* ---------- Color: Text ---------- */
+  --zs-text-hi:  #F5F7FA;        /* primary text on dark */
+  --zs-text-md:  #B9C1CC;        /* secondary */
+  --zs-text-lo:  #7E8796;        /* tertiary / metadata */
+  --zs-text-dim: #525A68;        /* disabled */
+
+  /* ---------- Color: Semantic ---------- */
+  --zs-red-500:    #F04438;      /* end call / destructive */
+  --zs-red-600:    #D92D20;
+  --zs-amber-500:  #F5A524;      /* low-confidence / warnings */
+  --zs-green-500:  #17B26A;      /* detection / success / live dot */
+  --zs-green-glow: rgba(23, 178, 106, 0.35);
+  --zs-violet-500: #8B5CF6;      /* AI accent, detection halo */
+  --zs-violet-glow: rgba(139, 92, 246, 0.32);
+
+  /* ---------- Destination brand dots ---------- */
+  --zs-jira:     #2684FF;
+  --zs-asana:    #F06A6A;
+  --zs-monday:   #FF3D57;
+  --zs-linear:   #5E6AD2;
+
+  /* ---------- Typography ---------- */
+  --zs-font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+                  "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --zs-font-display: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+                     "Segoe UI", Arial, sans-serif;
+  --zs-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* Type scale (px) — tight, UI-first */
+  --zs-fs-11: 11px;   /* micro tags, kbd */
+  --zs-fs-12: 12px;   /* captions, metadata */
+  --zs-fs-13: 13px;   /* body small / UI default */
+  --zs-fs-14: 14px;   /* body */
+  --zs-fs-15: 15px;   /* emphasized body */
+  --zs-fs-17: 17px;   /* subhead */
+  --zs-fs-20: 20px;   /* title */
+  --zs-fs-24: 24px;   /* H2 */
+  --zs-fs-32: 32px;   /* H1 / timer */
+  --zs-fs-44: 44px;   /* display */
+
+  --zs-lh-tight:  1.15;
+  --zs-lh-snug:   1.3;
+  --zs-lh-normal: 1.45;
+  --zs-lh-loose:  1.6;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --zs-s-0:  0;
+  --zs-s-1:  4px;
+  --zs-s-2:  8px;
+  --zs-s-3:  12px;
+  --zs-s-4:  16px;
+  --zs-s-5:  20px;
+  --zs-s-6:  24px;
+  --zs-s-8:  32px;
+  --zs-s-10: 40px;
+  --zs-s-12: 48px;
+  --zs-s-16: 64px;
+
+  /* ---------- Radii ---------- */
+  --zs-r-xs:   4px;
+  --zs-r-sm:   6px;
+  --zs-r-md:   10px;
+  --zs-r-lg:   14px;
+  --zs-r-xl:   20px;
+  --zs-r-pill: 999px;
+
+  /* ---------- Elevation ---------- */
+  --zs-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --zs-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --zs-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.3);
+  --zs-ring:      0 0 0 2px var(--zs-blue-500);
+  --zs-ring-ai:   0 0 0 2px var(--zs-violet-500);
+
+  /* ---------- Motion ---------- */
+  --zs-dur-1: 120ms;
+  --zs-dur-2: 200ms;
+  --zs-dur-3: 320ms;
+  --zs-dur-4: 520ms;
+  --zs-ease:  cubic-bezier(0.22, 1, 0.36, 1);
+  --zs-ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---------- Layout ---------- */
+  --zs-toolbar-h: 72px;
+  --zs-panel-w: 360px;
+  --zs-header-h: 56px;
+}
+
+/* ---------- Base resets ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--zs-bg-0);
+  color: var(--zs-text-hi);
+  font-family: var(--zs-font-sans);
+  font-size: var(--zs-fs-14);
+  line-height: var(--zs-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+input, textarea, select { font-family: inherit; color: inherit; }
+img, svg { display: block; max-width: 100%; }
+
+::selection { background: var(--zs-blue-200); color: var(--zs-text-hi); }
+
+/* ---------- Utility type classes ---------- */
+.zs-display { font-family: var(--zs-font-display); font-size: var(--zs-fs-44); font-weight: 700; letter-spacing: -0.02em; line-height: var(--zs-lh-tight); }
+.zs-h1 { font-family: var(--zs-font-display); font-size: var(--zs-fs-32); font-weight: 700; letter-spacing: -0.015em; line-height: var(--zs-lh-tight); }
+.zs-h2 { font-family: var(--zs-font-display); font-size: var(--zs-fs-24); font-weight: 600; letter-spacing: -0.01em; line-height: var(--zs-lh-snug); }
+.zs-title { font-size: var(--zs-fs-20); font-weight: 600; letter-spacing: -0.005em; line-height: var(--zs-lh-snug); }
+.zs-subhead { font-size: var(--zs-fs-17); font-weight: 600; line-height: var(--zs-lh-snug); }
+.zs-body { font-size: var(--zs-fs-14); line-height: var(--zs-lh-normal); }
+.zs-body-sm { font-size: var(--zs-fs-13); line-height: var(--zs-lh-normal); }
+.zs-caption { font-size: var(--zs-fs-12); color: var(--zs-text-md); letter-spacing: 0.01em; }
+.zs-overline { font-size: var(--zs-fs-11); text-transform: uppercase; letter-spacing: 0.1em; color: var(--zs-text-lo); font-weight: 600; }
+.zs-mono { font-family: var(--zs-font-mono); font-size: var(--zs-fs-12); letter-spacing: -0.01em; }
+
+.zs-text-hi { color: var(--zs-text-hi); }
+.zs-text-md { color: var(--zs-text-md); }
+.zs-text-lo { color: var(--zs-text-lo); }
