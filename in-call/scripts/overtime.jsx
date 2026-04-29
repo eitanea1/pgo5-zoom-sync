@@ -704,6 +704,274 @@ function LiveTranscriptTab({ engine }) {
   );
 }
 
+/* ---------------- Wrap-up Tab ----------------
+   Auto-opens when the meeting hits the 5-minute warning. Helps the host
+   close cleanly:
+     • AI Summary       — what was said + decisions made
+     • Open Tasks       — captured but not yet sent to Jira / Slack / etc.
+     • Follow-up        — show scheduled invite OR offer to schedule one
+*/
+const WRAPUP_SUMMARY = [
+  { kind: "decision",  text: "3-screen demo flow stays as scope — Pre-Meeting → In-Call → Recap. Standalone dashboard cut." },
+  { kind: "decision",  text: "One PRD per feature. No bundling — Uri's rule." },
+  { kind: "owned",     text: "Idan owns Cost-per-Brief math + per-seat Business Tiers slide for Max — by Wed." },
+  { kind: "open",      text: "“Why Zoom Sync” opening slide still needs a strong draft — Uri’s first probe." },
+  { kind: "logistics", text: "Booth — 240 GSM tees + non-smudge candy + balloons — vendor quotes pending." },
+];
+
+function WrapUpBanner({ overtime }) {
+  const isOvertime = overtime.isOvertime;
+  const minutesLeft = Math.max(0, Math.ceil(overtime.effectiveEnd - overtime.simMinutes));
+  const fg = isOvertime ? "#DC3545" : "#E88B0C";
+  const bg = isOvertime ? "rgba(220,53,69,0.12)" : "rgba(232,139,12,0.12)";
+  const border = isOvertime ? "rgba(220,53,69,0.40)" : "rgba(232,139,12,0.40)";
+
+  const headline = isOvertime
+    ? `Past scheduled end · ${overtime.overtimeMinutes} min over`
+    : `Meeting ends in ${minutesLeft} min · time to wrap up`;
+  const sub = isOvertime
+    ? "Sync put together everything you need to close cleanly. End the meeting once the open tasks are sent."
+    : "Sync put together what you need to close on time and let attendees leave with full clarity.";
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 12,
+      padding: "12px 14px",
+      background: bg,
+      border: `1px solid ${border}`,
+      borderRadius: 11,
+      marginBottom: 14,
+    }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: 9,
+        background: bg.replace("0.12", "0.22"),
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flex: "none",
+      }}>
+        <OIC.Sparkle size={17} color={fg} strokeWidth={2.2} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12.5, fontWeight: 700,
+          color: "var(--zs-text-hi)",
+          letterSpacing: "-0.01em",
+          marginBottom: 3,
+        }}>
+          {headline}
+        </div>
+        <div style={{
+          fontSize: 11.5, color: "var(--zs-text-md)",
+          lineHeight: 1.45,
+        }}>
+          {sub}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WrapUpSection({ title, count, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        marginBottom: 10,
+        paddingBottom: 6,
+        borderBottom: "1px solid var(--zs-line)",
+      }}>
+        <span style={{
+          fontSize: 10, fontWeight: 800,
+          color: "var(--zs-text-md)",
+          letterSpacing: "0.10em", textTransform: "uppercase",
+        }}>
+          {title}
+        </span>
+        {count != null && (
+          <span style={{
+            padding: "1px 7px", borderRadius: 99,
+            background: "var(--zs-bg-2)",
+            color: "var(--zs-text-md)",
+            fontSize: 10, fontWeight: 700,
+            border: "1px solid var(--zs-line)",
+          }}>
+            {count}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SummaryBullet({ kind, text }) {
+  const palette = {
+    decision:  { fg: "#1EA664", bg: "rgba(30,166,100,0.18)",  label: "Decision" },
+    owned:     { fg: "#7AB8FF", bg: "rgba(45,140,255,0.18)",  label: "Owned" },
+    open:      { fg: "#E88B0C", bg: "rgba(232,139,12,0.18)",  label: "Open" },
+    logistics: { fg: "#C7B3FF", bg: "rgba(139,92,246,0.18)",  label: "Logistics" },
+  };
+  const c = palette[kind] || palette.decision;
+  return (
+    <div style={{
+      display: "flex", gap: 10, alignItems: "flex-start",
+      padding: "8px 0",
+    }}>
+      <span style={{
+        fontSize: 9, fontWeight: 800,
+        letterSpacing: "0.06em", textTransform: "uppercase",
+        color: c.fg, background: c.bg,
+        padding: "3px 8px", borderRadius: 99,
+        flex: "none", marginTop: 1,
+      }}>
+        {c.label}
+      </span>
+      <span style={{
+        flex: 1,
+        fontSize: 12.5, color: "var(--zs-text-md)",
+        lineHeight: 1.5,
+      }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function WrapUpFollowUp({ followUp, onSchedule }) {
+  const scheduled = followUp.phase === "tracking" || followUp.phase === "sent";
+
+  if (scheduled && followUp.intent && followUp.participants) {
+    const slot = followUp.intent.suggestedSlots.find((s) => s.id === followUp.selectedSlotId)
+              || followUp.intent.suggestedSlots[0];
+    const date = new Date(slot.dateTime);
+    const day = date.toLocaleDateString("en-US", { weekday: "short" });
+    const monthDay = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const confirmed = followUp.participants.filter((p) => p.rsvpStatus === "confirmed").length;
+    const total = followUp.participants.length;
+
+    return (
+      <div style={{
+        padding: "12px 14px",
+        background: "rgba(30,166,100,0.10)",
+        border: "1px solid rgba(30,166,100,0.35)",
+        borderRadius: 10,
+        display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 9,
+          background: "rgba(30,166,100,0.22)",
+          color: "#1EA664",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flex: "none",
+        }}>
+          <OIC.Check size={18} strokeWidth={2.4} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--zs-text-hi)", marginBottom: 2 }}>
+            {followUp.subject || "Follow-up"} · {day} {monthDay} · {time}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--zs-text-md)" }}>
+            {confirmed} of {total} confirmed
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: "14px 14px",
+      background: "var(--zs-bg-2)",
+      border: "1px dashed var(--zs-line)",
+      borderRadius: 10,
+      textAlign: "center",
+    }}>
+      <div style={{
+        fontSize: 12, color: "var(--zs-text-md)",
+        marginBottom: 10, lineHeight: 1.5,
+      }}>
+        No follow-up scheduled yet.<br/>
+        <span style={{ color: "var(--zs-text-lo)" }}>Schedule one if topics stayed open.</span>
+      </div>
+      <button
+        onClick={onSchedule}
+        className="zs-btn zs-btn--primary zs-btn--sm"
+        style={{ width: "100%" }}
+      >
+        <OIC.Calendar size={13} strokeWidth={2.2} /> Schedule follow-up
+      </button>
+    </div>
+  );
+}
+
+function WrapUpTab({ overtime, tasks, followUp, onUpdate, onDismiss, onAccept, onAcceptAsMine, newestId, onScheduleFollowUp }) {
+  // Open tasks = anything captured by Sync that hasn't been sent yet.
+  const openTasks = (tasks || []).filter((t) => !t.departing);
+
+  const TaskCardCmp = window.TaskCard;
+  const ZS_PEOPLE = window.ZS_PEOPLE || [];
+
+  return (
+    <div className="zs-scroll" style={{
+      flex: 1, overflowY: "auto", padding: "14px 16px 18px",
+    }}>
+      <WrapUpBanner overtime={overtime} />
+
+      <WrapUpSection title="AI Summary" count={WRAPUP_SUMMARY.length}>
+        <div>
+          {WRAPUP_SUMMARY.map((b, i) => (
+            <SummaryBullet key={i} kind={b.kind} text={b.text} />
+          ))}
+        </div>
+      </WrapUpSection>
+
+      <WrapUpSection title="Open Tasks · not yet sent" count={openTasks.length}>
+        {openTasks.length === 0 ? (
+          <div style={{
+            padding: "18px 14px", borderRadius: 10,
+            background: "rgba(30,166,100,0.10)",
+            border: "1px solid rgba(30,166,100,0.30)",
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <OIC.Check size={16} color="#1EA664" strokeWidth={2.4} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--zs-text-hi)" }}>
+              All captured tasks are sent. Nothing left open.
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {openTasks.map((task) => TaskCardCmp ? (
+              <TaskCardCmp
+                key={task.id}
+                task={task}
+                isNew={task.id === newestId}
+                onAssign={(ownerId) => onUpdate(task.id, { owner: ownerId })}
+                onDestination={(d) => onUpdate(task.id, { destination: d })}
+                onDismiss={() => onDismiss(task.id)}
+                onAccept={onAccept}
+                onAcceptAsMine={onAcceptAsMine}
+                onConfirm={() => onAcceptAsMine && onAcceptAsMine(task)}
+              />
+            ) : (
+              <div key={task.id} style={{
+                padding: 10, borderRadius: 8,
+                background: "var(--zs-bg-2)",
+                fontSize: 12, color: "var(--zs-text-hi)",
+              }}>
+                {task.title}
+              </div>
+            ))}
+          </div>
+        )}
+      </WrapUpSection>
+
+      <WrapUpSection title="Follow-up">
+        <WrapUpFollowUp followUp={followUp} onSchedule={onScheduleFollowUp} />
+      </WrapUpSection>
+    </div>
+  );
+}
+
 /* Inject extra animations used by the new components. */
 (function injectTimerStyles() {
   if (document.getElementById("zs-timercard-styles")) return;
@@ -733,6 +1001,7 @@ Object.assign(window, {
   OvertimeModal,
   TimerCard,
   LiveTranscriptTab,
+  WrapUpTab,
   scoreColor,
   scoreLabel,
 });

@@ -52,7 +52,9 @@ function SyncPanel({
         </div>
       </div>
 
-      {/* Top-level Sync tabs: Live Transcript / Tasks / Follow-up */}
+      {/* Top-level Sync tabs: Live Transcript / Tasks / Wrap-up / Follow-up.
+          Wrap-up surfaces only once the meeting is near end / overtime, with
+          a notification dot to draw the eye. */}
       <div style={{
         display: "flex", gap: 0,
         padding: "10px 16px 0",
@@ -69,6 +71,14 @@ function SyncPanel({
           count={tasks.length}
           onClick={() => onSyncTabChange("tasks")}
         />
+        {(overtime.phase === "warning" || overtime.isOvertime) && (
+          <SyncTopTab
+            label="Wrap-up"
+            active={syncTab === "wrapup"}
+            showDot={syncTab !== "wrapup"}
+            onClick={() => onSyncTabChange("wrapup")}
+          />
+        )}
         <SyncTopTab
           label="Follow-up"
           active={syncTab === "followup"}
@@ -89,6 +99,21 @@ function SyncPanel({
           onAccept={onAccept} onAcceptAsMine={onAcceptAsMine}
           myTasks={myTasks} unassigned={unassigned}
           overtime={overtime}
+        />
+      ) : syncTab === "wrapup" ? (
+        <WrapUpTab
+          overtime={overtime}
+          tasks={tasks}
+          followUp={followUp}
+          newestId={newestId}
+          onUpdate={onUpdate}
+          onDismiss={onDismiss}
+          onAccept={onAccept}
+          onAcceptAsMine={onAcceptAsMine}
+          onScheduleFollowUp={() => {
+            followUp.fireDetection();
+            onSyncTabChange("followup");
+          }}
         />
       ) : (
         <div className="zs-scroll" style={{
@@ -635,6 +660,19 @@ function HostApp({ t, setTweak }) {
   useE(() => {
     if (overtime.phase === "modal") overtime.dismissModal();
   }, [overtime.phase]);
+
+  // First time the meeting hits the 5-min warning (or jumps to overtime),
+  // auto-open the Wrap-up sidebar and snap the panel onto it. We track a
+  // "have we already done this once?" flag so the user can switch tabs and
+  // it won't keep yanking them back.
+  const wrapupAutoOpenedRef = useR(false);
+  useE(() => {
+    const inWrapWindow = overtime.phase === "warning" || overtime.isOvertime;
+    if (inWrapWindow && !wrapupAutoOpenedRef.current) {
+      wrapupAutoOpenedRef.current = true;
+      setState((s) => ({ ...s, panelOpen: true, syncTab: "wrapup" }));
+    }
+  }, [overtime.phase, overtime.isOvertime]);
 
   // Timer
   useE(() => {
