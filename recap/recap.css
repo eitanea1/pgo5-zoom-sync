@@ -109,7 +109,9 @@ html, body {
   background: var(--zs-bg-1);
   border: 1px solid var(--zs-line);
   border-radius: 14px;
-  overflow: hidden;
+  /* Visible overflow so popovers (e.g. Assign menu on the last task in a
+     section) can extend below the section boundary without being clipped. */
+  overflow: visible;
 }
 .recap-section__head {
   padding: 18px 22px 14px;

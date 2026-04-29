@@ -572,8 +572,6 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="Nothing left on your plate. Nice."
-          assignable={true}
-          onAssign={assignTask}
         />
 
         <TasksSection
@@ -585,8 +583,6 @@ function RecapApp() {
           emptyText="No tasks were sent during this meeting."
           hideCheckbox={true}
           sentBadge={true}
-          assignable={true}
-          onAssign={assignTask}
         />
 
         <TasksSection
@@ -607,8 +603,6 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No team tasks pending."
-          assignable={true}
-          onAssign={assignTask}
         />
 
         <FollowUpSection
