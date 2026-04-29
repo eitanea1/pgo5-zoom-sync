@@ -6,7 +6,7 @@
    follow-up. The user can mark tasks as done, accept unassigned ones,
    send reminders to pending RSVPs, and head back to a new meeting. */
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 const RIC = window.ZoomSyncIcons;
 
 /* ---------------- Color thresholds (overtime-driven, no score) ---------------- */
@@ -180,19 +180,94 @@ function RecapStats({ data }) {
   );
 }
 
+/* ---------------- Assign menu (popover for unassigned tasks) ---------------- */
+function AssignMenu({ onAssign }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const people = window.ZS_PEOPLE || [];
+  return (
+    <div ref={ref} style={{ position: "relative", alignSelf: "center" }}>
+      <button className="r-btn" onClick={() => setOpen((v) => !v)}>
+        Assign
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+             style={{ marginLeft: 5, transform: open ? "rotate(180deg)" : "none", transition: "transform 140ms ease" }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50,
+          minWidth: 200,
+          background: "var(--zs-bg-2)",
+          border: "1px solid var(--zs-line)",
+          borderRadius: 10,
+          boxShadow: "0 16px 40px rgba(0,0,0,0.50)",
+          padding: 6,
+        }}>
+          {people.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => { onAssign(p.id); setOpen(false); }}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 10px", borderRadius: 7, border: "none", cursor: "pointer",
+                background: "transparent", color: "var(--zs-text-hi)",
+                fontSize: 12.5, fontWeight: 500, textAlign: "left",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--zs-bg-3)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{
+                width: 22, height: 22, borderRadius: "50%",
+                backgroundImage: p.photo ? `url(${p.photo})` : undefined,
+                backgroundColor: p.color,
+                backgroundSize: "cover", backgroundPosition: "center",
+                flex: "none",
+              }} />
+              <span style={{ flex: 1 }}>
+                {p.id === "me" ? "Take it (me)" : p.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- Task row ---------------- */
-function TaskRow({ task, owner, done, onToggleDone, action, actionLabel }) {
+function TaskRow({ task, owner, done, onToggleDone, action, actionLabel, assignMenu, sentBadge, hideCheckbox }) {
   const dest = window.ZS_DESTINATIONS && window.ZS_DESTINATIONS.find((d) => d.id === task.destination);
   return (
     <div className="r-task" data-done={done ? "true" : "false"}>
-      <button
-        className="r-task__check"
-        data-done={done ? "true" : "false"}
-        onClick={onToggleDone}
-        aria-label={done ? "Mark as not done" : "Mark as done"}
-      >
-        {done && <RIC.Check size={13} strokeWidth={3} />}
-      </button>
+      {!hideCheckbox ? (
+        <button
+          className="r-task__check"
+          data-done={done ? "true" : "false"}
+          onClick={onToggleDone}
+          aria-label={done ? "Mark as not done" : "Mark as done"}
+        >
+          {done && <RIC.Check size={13} strokeWidth={3} />}
+        </button>
+      ) : (
+        <div style={{
+          width: 18, height: 18, borderRadius: "50%",
+          background: "rgba(30,166,100,0.20)",
+          color: "#1EA664",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flex: "none", marginTop: 2,
+          border: "1.5px solid rgba(30,166,100,0.50)",
+        }}>
+          <RIC.Check size={11} strokeWidth={3} />
+        </div>
+      )}
       <div className="r-task__main">
         <div className="r-task__title">{task.title}</div>
         <div className="r-task__meta">
@@ -217,8 +292,22 @@ function TaskRow({ task, owner, done, onToggleDone, action, actionLabel }) {
               <span>{dest.name}</span>
             </span>
           )}
+          {sentBadge && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "3px 8px", borderRadius: 99,
+              fontSize: 9, fontWeight: 800, letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              background: "rgba(30,166,100,0.15)",
+              color: "#4FCB7F",
+              border: "1px solid rgba(30,166,100,0.30)",
+            }}>
+              <RIC.Check size={9} strokeWidth={3} /> Sent
+            </span>
+          )}
         </div>
       </div>
+      {assignMenu}
       {action && (
         <button className="r-btn" onClick={action} style={{ alignSelf: "center" }}>
           {actionLabel}
@@ -233,7 +322,7 @@ function personById(id) {
 }
 
 /* ---------------- Tasks Section ---------------- */
-function TasksSection({ title, sub, tasks, doneIds, toggleDone, emptyText, action, actionLabelFn }) {
+function TasksSection({ title, sub, tasks, doneIds, toggleDone, emptyText, action, actionLabelFn, assignable, onAssign, hideCheckbox, sentBadge }) {
   return (
     <div className="recap-section">
       <div className="recap-section__head">
@@ -256,6 +345,9 @@ function TasksSection({ title, sub, tasks, doneIds, toggleDone, emptyText, actio
             onToggleDone={() => toggleDone(t.id)}
             action={action ? () => action(t) : null}
             actionLabel={actionLabelFn ? actionLabelFn(t) : null}
+            assignMenu={assignable ? <AssignMenu onAssign={(ownerId) => onAssign(t, ownerId)} /> : null}
+            hideCheckbox={hideCheckbox}
+            sentBadge={sentBadge}
           />
         ))}
       </div>
@@ -399,7 +491,9 @@ function RecapApp() {
   }, []);
 
   const [doneIds, setDoneIds] = useState(new Set());
-  const [acceptedLater, setAcceptedLater] = useState(new Set());
+  // assignments: Map<taskId, ownerId> — tracks late assignments made in the
+  // recap. Clicking "Assign → Take it (me)" or any teammate populates this.
+  const [assignments, setAssignments] = useState({});
   const [sentReminders, setSentReminders] = useState(new Set());
 
   const toggleDone = (id) => setDoneIds((prev) => {
@@ -408,11 +502,24 @@ function RecapApp() {
     return next;
   });
 
-  const acceptUnassigned = (task) => setAcceptedLater((prev) => new Set([...prev, task.id]));
+  const assignTask = (task, ownerId) => {
+    setAssignments((prev) => ({ ...prev, [task.id]: ownerId }));
+  };
   const sendReminder = (pid) => setSentReminders((prev) => new Set([...prev, pid]));
 
-  // Filter unassigned to remove ones the user has now accepted
-  const visibleUnassigned = data.unassigned.filter((t) => !acceptedLater.has(t.id));
+  // Reflect new assignments in the visible buckets:
+  //   • unassigned tasks now assigned → leave Unassigned
+  //   • assigned to "me"  → join Your tasks to close
+  //   • assigned to teammate → join Team pending (with the new owner)
+  const visibleUnassigned = data.unassigned.filter((t) => !assignments[t.id]);
+  const newlyMine = data.unassigned
+    .filter((t) => assignments[t.id] === "me")
+    .map((t) => ({ ...t, owner: "me" }));
+  const newlyTeam = data.unassigned
+    .filter((t) => assignments[t.id] && assignments[t.id] !== "me")
+    .map((t) => ({ ...t, owner: assignments[t.id] }));
+  const visibleMyPending  = [...data.myPending, ...newlyMine];
+  const visibleTeamPending = [...data.teamPending, ...newlyTeam];
 
   const goBack = () => { window.location.href = "../Pre-Meeting%20Popup.html"; };
 
@@ -427,12 +534,17 @@ function RecapApp() {
           wrappedUp={data.wrappedUp}
         />
 
-        <RecapStats data={{ ...data, unassigned: visibleUnassigned }} />
+        <RecapStats data={{
+          ...data,
+          unassigned: visibleUnassigned,
+          myPending: visibleMyPending,
+          teamPending: visibleTeamPending,
+        }} />
 
         <TasksSection
           title="Your tasks to close"
           sub="Tasks assigned to you that didn't get sent during the meeting."
-          tasks={data.myPending}
+          tasks={visibleMyPending}
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="Nothing left on your plate. Nice."
@@ -445,23 +557,25 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No tasks were sent during this meeting."
+          hideCheckbox={true}
+          sentBadge={true}
         />
 
         <TasksSection
           title="Unassigned · still need an owner"
-          sub="Sync captured these but no one took them. Claim what's yours."
+          sub="Sync captured these but no one took them. Pick an owner — yourself or a teammate."
           tasks={visibleUnassigned}
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="Everything found a home."
-          action={acceptUnassigned}
-          actionLabelFn={() => "Take it"}
+          assignable={true}
+          onAssign={assignTask}
         />
 
         <TasksSection
           title="Team pending"
           sub="Assigned to teammates — they'll accept on their side."
-          tasks={data.teamPending}
+          tasks={visibleTeamPending}
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No team tasks pending."
