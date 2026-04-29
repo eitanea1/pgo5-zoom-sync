@@ -247,7 +247,7 @@ function TaskRow({ task, owner, done, onToggleDone, action, actionLabel, assignM
   const dest = window.ZS_DESTINATIONS && window.ZS_DESTINATIONS.find((d) => d.id === task.destination);
   return (
     <div className="r-task" data-done={done ? "true" : "false"}>
-      {!hideCheckbox ? (
+      {!hideCheckbox && (
         <button
           className="r-task__check"
           data-done={done ? "true" : "false"}
@@ -256,17 +256,6 @@ function TaskRow({ task, owner, done, onToggleDone, action, actionLabel, assignM
         >
           {done && <RIC.Check size={13} strokeWidth={3} />}
         </button>
-      ) : (
-        <div style={{
-          width: 18, height: 18, borderRadius: "50%",
-          background: "rgba(30,166,100,0.20)",
-          color: "#1EA664",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flex: "none", marginTop: 2,
-          border: "1.5px solid rgba(30,166,100,0.50)",
-        }}>
-          <RIC.Check size={11} strokeWidth={3} />
-        </div>
       )}
       <div className="r-task__main">
         <div className="r-task__title">{task.title}</div>
@@ -507,19 +496,31 @@ function RecapApp() {
   };
   const sendReminder = (pid) => setSentReminders((prev) => new Set([...prev, pid]));
 
-  // Reflect new assignments in the visible buckets:
-  //   • unassigned tasks now assigned → leave Unassigned
-  //   • assigned to "me"  → join Your tasks to close
-  //   • assigned to teammate → join Team pending (with the new owner)
-  const visibleUnassigned = data.unassigned.filter((t) => !assignments[t.id]);
-  const newlyMine = data.unassigned
-    .filter((t) => assignments[t.id] === "me")
-    .map((t) => ({ ...t, owner: "me" }));
-  const newlyTeam = data.unassigned
-    .filter((t) => assignments[t.id] && assignments[t.id] !== "me")
-    .map((t) => ({ ...t, owner: assignments[t.id] }));
-  const visibleMyPending  = [...data.myPending, ...newlyMine];
-  const visibleTeamPending = [...data.teamPending, ...newlyTeam];
+  // Reflect any late assignments. The host can re-assign tasks from any
+  // section in the recap, and the lists re-bucket accordingly:
+  //   • assignment override === "me"  → Your tasks to close
+  //   • override is a teammate         → Team pending
+  //   • override is null               → Unassigned
+  // For Sent tasks, the owner display updates in place — the task stays
+  // in "Sent during the meeting" since it was already routed.
+  const effectiveOwner = (t) =>
+    assignments[t.id] !== undefined ? assignments[t.id] : t.owner;
+  const enrichOwner = (t) =>
+    assignments[t.id] !== undefined ? { ...t, owner: assignments[t.id] } : t;
+
+  const allPending = [...data.myPending, ...data.teamPending, ...data.unassigned];
+  const visibleMyPending = allPending
+    .filter((t) => effectiveOwner(t) === "me")
+    .map(enrichOwner);
+  const visibleTeamPending = allPending
+    .filter((t) => {
+      const o = effectiveOwner(t);
+      return o && o !== "me";
+    })
+    .map(enrichOwner);
+  const visibleUnassigned = allPending
+    .filter((t) => !effectiveOwner(t));
+  const visibleAccepted = data.accepted.map(enrichOwner);
 
   const goBack = () => { window.location.href = "../Pre-Meeting%20Popup.html"; };
 
@@ -548,17 +549,21 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="Nothing left on your plate. Nice."
+          assignable={true}
+          onAssign={assignTask}
         />
 
         <TasksSection
           title="Sent during the meeting"
           sub="Tasks accepted and routed to Jira / Asana / Linear."
-          tasks={data.accepted}
+          tasks={visibleAccepted}
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No tasks were sent during this meeting."
           hideCheckbox={true}
           sentBadge={true}
+          assignable={true}
+          onAssign={assignTask}
         />
 
         <TasksSection
@@ -579,6 +584,8 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No team tasks pending."
+          assignable={true}
+          onAssign={assignTask}
         />
 
         <FollowUpSection
