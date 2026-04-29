@@ -31,6 +31,15 @@ function formatElapsed(seconds) {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+/* Format overtime minutes → "+11m" / "+1h 17m". Returns null if not over. */
+function formatOvertime(min) {
+  if (min <= 0) return null;
+  if (min < 60) return `+${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `+${h}h` : `+${h}h ${m}m`;
+}
+
 /* ---------------- Animated counter ---------------- */
 function CountUp({ to = 0, ms = 800 }) {
   const [v, setV] = useState(0);
@@ -74,10 +83,8 @@ function RecapTopbar({ onBack }) {
 /* ---------------- Hero (no score — time-based summary) ---------------- */
 function RecapHero({ overtimeMin, scheduledMin, elapsedSec, wrappedUp }) {
   const c = recapTimeColor(overtimeMin);
-  const elapsedMinTotal = Math.floor(elapsedSec / 60);
-  const overtimeLabel = overtimeMin <= 0
-    ? "On time"
-    : `+${overtimeMin} min over`;
+  const isOvertime = overtimeMin > 0;
+  const overtimeStr = formatOvertime(overtimeMin);
   return (
     <div
       className="recap-hero"
@@ -117,31 +124,47 @@ function RecapHero({ overtimeMin, scheduledMin, elapsedSec, wrappedUp }) {
           display: "flex", flexDirection: "column",
           alignItems: "center", gap: 14,
         }}>
-          <div style={{
-            display: "flex", alignItems: "baseline", gap: 4,
-            color: c.fg,
-            fontSize: 64, fontWeight: 800, lineHeight: 1,
-            letterSpacing: "-0.03em",
-            fontVariantNumeric: "tabular-nums",
-            textShadow: `0 0 28px ${c.glow}`,
-          }}>
-            <CountUp to={elapsedMinTotal} />
-            <span style={{ fontSize: 22, fontWeight: 700 }}>m</span>
-          </div>
-          <div style={{
-            fontSize: 11, fontWeight: 800, letterSpacing: "0.10em",
-            color: c.fg, textTransform: "uppercase",
-            padding: "5px 11px", borderRadius: 99,
-            background: c.soft, border: `1px solid ${c.glow}`,
-          }}>
-            {overtimeLabel}
-          </div>
-          <div style={{
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.10em",
-            color: "var(--zs-text-lo)", textTransform: "uppercase",
-          }}>
-            Total elapsed
-          </div>
+          {isOvertime ? (
+            <>
+              <div style={{
+                color: c.fg,
+                fontSize: 64, fontWeight: 800, lineHeight: 1,
+                letterSpacing: "-0.03em",
+                fontVariantNumeric: "tabular-nums",
+                textShadow: `0 0 28px ${c.glow}`,
+              }}>
+                {overtimeStr}
+              </div>
+              <div style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: "0.10em",
+                color: c.fg, textTransform: "uppercase",
+                padding: "5px 11px", borderRadius: 99,
+                background: c.soft, border: `1px solid ${c.glow}`,
+              }}>
+                Over scheduled
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{
+                width: 78, height: 78, borderRadius: "50%",
+                background: c.soft,
+                border: `2px solid ${c.glow}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 32px ${c.glow}`,
+              }}>
+                <RIC.Check size={36} color={c.fg} strokeWidth={3} />
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 800, letterSpacing: "0.10em",
+                color: c.fg, textTransform: "uppercase",
+                padding: "5px 11px", borderRadius: 99,
+                background: c.soft, border: `1px solid ${c.glow}`,
+              }}>
+                On time
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
