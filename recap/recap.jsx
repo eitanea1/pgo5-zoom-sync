@@ -9,19 +9,19 @@
 const { useState, useEffect, useMemo } = React;
 const RIC = window.ZoomSyncIcons;
 
-/* ---------------- Color thresholds (mirrors overtime.jsx) ---------------- */
-function recapScoreColor(score) {
-  if (score >= 100) return { fg: "#1EA664", glow: "rgba(30,166,100,0.32)", soft: "rgba(30,166,100,0.18)" };
-  if (score >= 90)  return { fg: "#E88B0C", glow: "rgba(232,139,12,0.32)", soft: "rgba(232,139,12,0.18)" };
-  if (score >= 80)  return { fg: "#F26B0F", glow: "rgba(242,107,15,0.36)", soft: "rgba(242,107,15,0.20)" };
-  return                  { fg: "#DC3545", glow: "rgba(220,53,69,0.40)",  soft: "rgba(220,53,69,0.22)"  };
+/* ---------------- Color thresholds (overtime-driven, no score) ---------------- */
+function recapTimeColor(overtimeMin) {
+  if (overtimeMin <= 0) return { fg: "#1EA664", glow: "rgba(30,166,100,0.32)", soft: "rgba(30,166,100,0.18)" };
+  if (overtimeMin <= 3) return { fg: "#E88B0C", glow: "rgba(232,139,12,0.32)", soft: "rgba(232,139,12,0.18)" };
+  if (overtimeMin <= 8) return { fg: "#F26B0F", glow: "rgba(242,107,15,0.36)", soft: "rgba(242,107,15,0.20)" };
+  return                       { fg: "#DC3545", glow: "rgba(220,53,69,0.40)",  soft: "rgba(220,53,69,0.22)"  };
 }
 
-function recapScoreVerdict(score, overtimeMin) {
-  if (score >= 100) return "Finished on time. Nice work.";
-  if (score >= 90)  return `${overtimeMin} min over — close to on-time.`;
-  if (score >= 80)  return `${overtimeMin} min over scheduled. Try shorter agendas next time.`;
-  return `${overtimeMin} min over. The next meeting will benefit from a tighter agenda.`;
+function recapTimeVerdict(overtimeMin) {
+  if (overtimeMin <= 0) return "Finished on time. Nice work.";
+  if (overtimeMin <= 3) return `Ran ${overtimeMin} min over — close to on-time.`;
+  if (overtimeMin <= 8) return `Ran ${overtimeMin} min over scheduled. Try a tighter agenda next time.`;
+  return `Ran ${overtimeMin} min over. The next meeting will benefit from a shorter scope.`;
 }
 
 /* Format elapsed seconds → "1h 14m" / "32m" */
@@ -71,9 +71,13 @@ function RecapTopbar({ onBack }) {
   );
 }
 
-/* ---------------- Hero (Score Reveal) ---------------- */
-function RecapHero({ score, overtimeMin, scheduledMin, elapsedSec, wrappedUp }) {
-  const c = recapScoreColor(score);
+/* ---------------- Hero (no score — time-based summary) ---------------- */
+function RecapHero({ overtimeMin, scheduledMin, elapsedSec, wrappedUp }) {
+  const c = recapTimeColor(overtimeMin);
+  const elapsedMinTotal = Math.floor(elapsedSec / 60);
+  const overtimeLabel = overtimeMin <= 0
+    ? "On time"
+    : `+${overtimeMin} min over`;
   return (
     <div
       className="recap-hero"
@@ -104,19 +108,40 @@ function RecapHero({ score, overtimeMin, scheduledMin, elapsedSec, wrappedUp }) 
           {wrappedUp ? "Wrapped up." : "Meeting ended."}
         </h1>
         <p className="recap-hero__sub">
-          <strong>{recapScoreVerdict(score, overtimeMin)}</strong>{" "}
-          Your private Meeting Score is captured below — only you see it. Use the
-          tasks and follow-ups to close the loop.
+          <strong>{recapTimeVerdict(overtimeMin)}</strong>{" "}
+          Use the tasks and follow-ups below to close the loop.
         </p>
       </div>
       <div className="recap-hero__score">
-        <div className="recap-hero__score-num">
-          <CountUp to={score} />
-          <small>%</small>
-        </div>
-        <div className="recap-hero__score-label">
-          <RIC.Lock size={11} strokeWidth={2.2} />
-          Private score
+        <div style={{
+          display: "flex", flexDirection: "column",
+          alignItems: "center", gap: 14,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "baseline", gap: 4,
+            color: c.fg,
+            fontSize: 64, fontWeight: 800, lineHeight: 1,
+            letterSpacing: "-0.03em",
+            fontVariantNumeric: "tabular-nums",
+            textShadow: `0 0 28px ${c.glow}`,
+          }}>
+            <CountUp to={elapsedMinTotal} />
+            <span style={{ fontSize: 22, fontWeight: 700 }}>m</span>
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: "0.10em",
+            color: c.fg, textTransform: "uppercase",
+            padding: "5px 11px", borderRadius: 99,
+            background: c.soft, border: `1px solid ${c.glow}`,
+          }}>
+            {overtimeLabel}
+          </div>
+          <div style={{
+            fontSize: 10, fontWeight: 800, letterSpacing: "0.10em",
+            color: "var(--zs-text-lo)", textTransform: "uppercase",
+          }}>
+            Total elapsed
+          </div>
         </div>
       </div>
     </div>
@@ -396,7 +421,6 @@ function RecapApp() {
       <RecapTopbar onBack={goBack} />
       <div className="recap-main">
         <RecapHero
-          score={data.score}
           overtimeMin={data.overtimeMinutes}
           scheduledMin={data.scheduledMinutes}
           elapsedSec={data.elapsed}

@@ -14,8 +14,13 @@ function SyncPanel({
   // follow-up integration
   followUp, syncTab, onSyncTabChange,
   // overtime engine — drives the TimerCard inside the Tasks tab
-  overtime,
+  overtime, wrapupWindowMinutes,
 }) {
+  // Compute timer state once so the panel can:
+  //   • know whether to show the Wrap-up tab
+  //   • paint a subtle tint on its background that matches the timer colour
+  const timerState = timerStateFor(overtime, wrapupWindowMinutes);
+  const inWrapWindow = timerState.inWindow;
   const myId = "me";
   const myTasks    = tasks.filter((t) => t.owner === myId && !t.departing);
   // "Pending" = anything that needs the host's confirm + send, regardless of
@@ -32,7 +37,13 @@ function SyncPanel({
 
   return (
     <aside className="zs-panel zs-scroll"
-      style={{ width: "var(--zs-panel-w)", flex: "none", height: "100%" }}>
+      style={{
+        width: "var(--zs-panel-w)", flex: "none", height: "100%",
+        backgroundImage: timerState.tint
+          ? `linear-gradient(180deg, ${timerState.tint} 0%, transparent 70%)`
+          : undefined,
+        transition: "background-image 400ms ease",
+      }}>
       {/* Panel header — Zoom Sync wordmark */}
       <div className="zs-panel__header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -71,7 +82,7 @@ function SyncPanel({
           count={tasks.length}
           onClick={() => onSyncTabChange("tasks")}
         />
-        {(overtime.phase === "warning" || overtime.isOvertime) && (
+        {inWrapWindow && (
           <SyncTopTab
             label="Wrap-up"
             active={syncTab === "wrapup"}
@@ -99,6 +110,7 @@ function SyncPanel({
           onAccept={onAccept} onAcceptAsMine={onAcceptAsMine}
           myTasks={myTasks} unassigned={unassigned}
           overtime={overtime}
+          wrapupWindowMinutes={wrapupWindowMinutes}
         />
       ) : syncTab === "wrapup" ? (
         <WrapUpTab
@@ -183,15 +195,16 @@ function SyncTopTab({ label, active, count, badge, showDot, onClick }) {
 }
 
 /* ---------------- Tasks tab content (was TaskPanel body) ---------------- */
-function TasksTabContent({ tasks, acceptedTasks, newestId, tab, onTabChange, onUpdate, onDismiss, onAccept, onAcceptAsMine, myTasks, unassigned, overtime }) {
+function TasksTabContent({ tasks, acceptedTasks, newestId, tab, onTabChange, onUpdate, onDismiss, onAccept, onAcceptAsMine, myTasks, unassigned, overtime, wrapupWindowMinutes }) {
   const currentList = tab === "mine" ? myTasks : tab === "unassigned" ? unassigned : [];
 
   return (
     <>
       <div style={{ padding: "12px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* Timer Card — sits at the very top of the Tasks tab. Replaces
-            the floating Score Indicator + Warning Banner + Overtime Modal. */}
-        {overtime && <TimerCard overtime={overtime} />}
+        {/* Timer Card — only renders when meeting is in the wrap-up window
+            (last `wrapupWindowMinutes` minutes). Outside that window the
+            TimerCard returns null and nothing shows. */}
+        {overtime && <TimerCard overtime={overtime} windowMinutes={wrapupWindowMinutes} />}
         <div className="zs-tabs" style={{ width: "fit-content" }}>
           <button className="zs-tab" data-active={tab === "mine" ? "true" : "false"} onClick={() => onTabChange("mine")}>
             My tasks · {myTasks.length}
@@ -593,7 +606,7 @@ function MeetingGrid({ speakerId, muted, layout, selfId = "me" }) {
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "panelOpen": true,
   "showToast": true,
-  "activeSpeakerCycle": false,
+  "activeSpeakerCycle": true,
   "initialTab": "mine",
   "streamIntervalSec": 18,
   "layout": "grid",
@@ -604,7 +617,8 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "followUpAutoDetect": true,
   "followUpStartDelaySec": 60,
   "scheduledMinutes": 30,
-  "demoSecondsPerMinute": 5
+  "demoSecondsPerMinute": 5,
+  "wrapupWindowMinutes": 10
 }/*EDITMODE-END*/;
 
 function HostApp({ t, setTweak }) {
@@ -661,18 +675,28 @@ function HostApp({ t, setTweak }) {
     if (overtime.phase === "modal") overtime.dismissModal();
   }, [overtime.phase]);
 
-  // First time the meeting hits the 5-min warning (or jumps to overtime),
+  // First time the meeting enters the wrap-up window (default last 10 min),
   // auto-open the Wrap-up sidebar and snap the panel onto it. We track a
   // "have we already done this once?" flag so the user can switch tabs and
   // it won't keep yanking them back.
   const wrapupAutoOpenedRef = useR(false);
+  const wrapupWindowMin = t.wrapupWindowMinutes || 10;
   useE(() => {
-    const inWrapWindow = overtime.phase === "warning" || overtime.isOvertime;
+    const minutesLeft = overtime.effectiveEnd - overtime.simMinutes;
+    const inWrapWindow = overtime.isOvertime || minutesLeft <= wrapupWindowMin;
     if (inWrapWindow && !wrapupAutoOpenedRef.current) {
       wrapupAutoOpenedRef.current = true;
       setState((s) => ({ ...s, panelOpen: true, syncTab: "wrapup" }));
     }
-  }, [overtime.phase, overtime.isOvertime]);
+  }, [overtime.simMinutes, overtime.effectiveEnd, overtime.isOvertime, wrapupWindowMin]);
+
+  // When a NEW task lands (toast appears), bring the Sync panel forward
+  // and snap to the Tasks tab so the user sees the capture immediately.
+  useE(() => {
+    if (state.newestTaskId) {
+      setState((s) => ({ ...s, panelOpen: true, syncTab: "tasks" }));
+    }
+  }, [state.newestTaskId]);
 
   // Timer
   useE(() => {
@@ -980,6 +1004,7 @@ function HostApp({ t, setTweak }) {
             syncTab={state.syncTab}
             onSyncTabChange={(syncTab) => setState((s) => ({ ...s, syncTab }))}
             overtime={overtime}
+            wrapupWindowMinutes={wrapupWindowMin}
             followUp={followUp}
             onClose={() => setState((s) => ({ ...s, panelOpen: false }))}
             onUpdate={updateTask}
@@ -1226,18 +1251,22 @@ function HostApp({ t, setTweak }) {
           options={["grid", "spotlight"]}
           onChange={(v) => setTweak("layout", v)} />
 
-        <TweakSection label="Meeting Score" />
+        <TweakSection label="Wrap-up timer" />
         <TweakSlider label="Scheduled length" value={t.scheduledMinutes || 30}
           min={5} max={90} step={5} unit=" min"
           onChange={(v) => setTweak("scheduledMinutes", v)} />
+        <TweakSlider label="Timer appears at" value={t.wrapupWindowMinutes || 10}
+          min={2} max={30} step={1} unit=" min left"
+          onChange={(v) => setTweak("wrapupWindowMinutes", v)} />
         <TweakSlider label="Demo speed (1 min =)" value={t.demoSecondsPerMinute || 5}
           min={1} max={60} step={1} unit="s"
           onChange={(v) => setTweak("demoSecondsPerMinute", v)} />
-        <TweakButton label="→ On track (100%)" onClick={() => overtime.jumpTo("ontrack")} />
-        <TweakButton label="→ 5-min warning" onClick={() => overtime.jumpTo("warning")} />
-        <TweakButton label="→ Overtime modal" onClick={() => overtime.jumpTo("modal")} />
-        <TweakButton label="→ Overtime · 97%" onClick={() => overtime.jumpTo("overtime")} />
-        <TweakButton label="→ Deep overtime · 89%" onClick={() => overtime.jumpTo("deepOvertime")} />
+        <TweakButton label="→ On track (no timer)" onClick={() => overtime.jumpTo("ontrack")} />
+        <TweakButton label="→ Green · 8 min left" onClick={() => overtime.jumpTo("warning")} />
+        <TweakButton label="→ Orange · 4 min left" onClick={() => overtime.jumpTo("orange")} />
+        <TweakButton label="→ Red · 2 min left" onClick={() => overtime.jumpTo("modal")} />
+        <TweakButton label="→ Overtime · +3 min" onClick={() => overtime.jumpTo("overtime")} />
+        <TweakButton label="→ Deep overtime · +11" onClick={() => overtime.jumpTo("deepOvertime")} />
         <TweakButton label="→ End → Recap window" onClick={persistAndGoToRecap} />
       </TweaksPanel>
     </div>

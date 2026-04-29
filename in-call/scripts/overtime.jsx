@@ -112,14 +112,23 @@ function useOvertimeEngine({
     setPhase("ontrack");
   };
 
-  // Tweaks debug helpers — jump to a specific phase
+  // Tweaks debug helpers — jump to a specific phase. Targets match the
+  // wrap-up colour bands assuming the default 10-min window:
+  //   ontrack   → no timer yet (0 simMinutes)
+  //   warning   → 8 min left  → GREEN band
+  //   orange    → 4 min left  → ORANGE band
+  //   modal     → 2 min left  → RED band (final stretch)
+  //   overtime  → 3 min OVER  → red overtime
+  //   deepOvertime → 11 min OVER → deep overtime
   const jumpTo = (target) => {
     if (target === "ontrack") {
       setSimMinutes(0); setBannerSeen(false); setModalSeen(false); setExtensionMinutes(0);
     } else if (target === "warning") {
-      setSimMinutes(scheduledMinutes - 4.5); setBannerSeen(false); setModalSeen(false); setExtensionMinutes(0);
+      setSimMinutes(Math.max(0, scheduledMinutes - 8)); setBannerSeen(false); setModalSeen(false); setExtensionMinutes(0);
+    } else if (target === "orange") {
+      setSimMinutes(Math.max(0, scheduledMinutes - 4)); setBannerSeen(true); setModalSeen(false); setExtensionMinutes(0);
     } else if (target === "modal") {
-      setSimMinutes(scheduledMinutes); setBannerSeen(true); setModalSeen(false); setExtensionMinutes(0);
+      setSimMinutes(Math.max(0, scheduledMinutes - 2)); setBannerSeen(true); setModalSeen(false); setExtensionMinutes(0);
     } else if (target === "overtime") {
       setSimMinutes(scheduledMinutes + 3); setBannerSeen(true); setModalSeen(true); setExtensionMinutes(0);
     } else if (target === "deepOvertime") {
@@ -507,48 +516,85 @@ function OvertimeModal({ score, onExtend, onScheduleFollowUp, onWrapUp, onDismis
 })();
 
 /* ---------------- Timer Card ----------------
-   Replaces the floating Score Indicator + WarningBanner + OvertimeModal.
-   Lives inside the Sync panel (top of the Tasks tab). 3 colour states:
-     • Time Remaining (green)  — minutes left > 5
-     • Ending Soon  (yellow)   — minutes left ≤ 5 and not yet overtime
-     • Overtime     (red)      — past scheduled end; shows +MM:SS
-*/
-function TimerCard({ overtime }) {
-  const { simMinutes, effectiveEnd, isOvertime, overtimeMinutes } = overtime;
+   Lives inside the Sync panel (top of the Tasks tab). 3 colour states keyed
+   to the configured wrap-up window (default 10 min):
+     • Time Remaining (green)   — minutesLeft > 50% of window
+     • Ending Soon    (orange)  — minutesLeft 30%-50% of window
+     • Final Stretch  (red)     — minutesLeft < 30% of window
+     • Overtime       (red)     — past scheduled end; shows +MM:SS
 
-  let label, fg, bg, border;
-  let display;
+   Returns null (renders nothing) when we're outside the wrap-up window —
+   the timer doesn't exist until the meeting is approaching its end.
+*/
+function timerStateFor(overtime, windowMinutes = 10) {
+  const { simMinutes, effectiveEnd, isOvertime, overtimeMinutes } = overtime;
+  const w = Math.max(1, windowMinutes);
+  const minutesLeft = effectiveEnd - simMinutes;
+  const inWindow = isOvertime || minutesLeft <= w;
 
   if (isOvertime) {
-    label = "Overtime";
-    fg = "#DC3545";
-    bg = "rgba(220,53,69,0.12)";
-    border = "rgba(220,53,69,0.40)";
     const overSec = Math.max(0, Math.floor(overtimeMinutes * 60));
     const mm = String(Math.floor(overSec / 60)).padStart(2, "0");
     const ss = String(overSec % 60).padStart(2, "0");
-    display = `+${mm}:${ss}`;
-  } else {
-    const minutesLeft = Math.max(0, effectiveEnd - simMinutes);
-    const nearEnd = minutesLeft <= 5;
-    if (nearEnd) {
-      label = "Ending Soon";
-      fg = "#E88B0C";
-      bg = "rgba(232,139,12,0.12)";
-      border = "rgba(232,139,12,0.40)";
-    } else {
-      label = "Time Remaining";
-      fg = "#1EA664";
-      bg = "rgba(30,166,100,0.12)";
-      border = "rgba(30,166,100,0.40)";
-    }
-    const totalSec = Math.max(0, Math.floor(minutesLeft * 60));
-    const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-    const ss = String(totalSec % 60).padStart(2, "0");
-    display = `${mm}:${ss}`;
+    return {
+      inWindow: true,
+      tone: "red",
+      label: "Overtime",
+      display: `+${mm}:${ss}`,
+      fg: "#DC3545",
+      bg: "rgba(220,53,69,0.12)",
+      border: "rgba(220,53,69,0.40)",
+      tint: "rgba(220,53,69,0.05)",
+    };
   }
 
-  const iconBg = bg.replace("0.12", "0.22");
+  if (!inWindow) {
+    return { inWindow: false, tint: null };
+  }
+
+  const ratio = minutesLeft / w;
+  const totalSec = Math.max(0, Math.floor(minutesLeft * 60));
+  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const ss = String(totalSec % 60).padStart(2, "0");
+  const display = `${mm}:${ss}`;
+
+  if (ratio > 0.5) {
+    return {
+      inWindow: true, tone: "green",
+      label: "Time Remaining", display,
+      fg: "#1EA664",
+      bg: "rgba(30,166,100,0.12)",
+      border: "rgba(30,166,100,0.40)",
+      tint: "rgba(30,166,100,0.04)",
+    };
+  }
+  if (ratio > 0.3) {
+    return {
+      inWindow: true, tone: "orange",
+      label: "Ending Soon", display,
+      fg: "#E88B0C",
+      bg: "rgba(232,139,12,0.12)",
+      border: "rgba(232,139,12,0.40)",
+      tint: "rgba(232,139,12,0.05)",
+    };
+  }
+  return {
+    inWindow: true, tone: "red",
+    label: "Final Stretch", display,
+    fg: "#DC3545",
+    bg: "rgba(220,53,69,0.10)",
+    border: "rgba(220,53,69,0.40)",
+    tint: "rgba(220,53,69,0.05)",
+  };
+}
+
+function TimerCard({ overtime, windowMinutes = 10 }) {
+  const state = timerStateFor(overtime, windowMinutes);
+  if (!state.inWindow) return null;
+
+  const { label, fg, bg, border, display, tone } = state;
+
+  const iconBg = bg.replace("0.12", "0.22").replace("0.10", "0.20");
 
   return (
     <div style={{
@@ -558,7 +604,7 @@ function TimerCard({ overtime }) {
       border: `1px solid ${border}`,
       borderRadius: 10,
       marginBottom: 12,
-      animation: isOvertime ? "zsTimerPulse 1.6s ease-in-out infinite" : undefined,
+      animation: tone === "red" ? "zsTimerPulse 1.6s ease-in-out infinite" : undefined,
     }}>
       <div style={{
         width: 32, height: 32, borderRadius: 8,
@@ -1000,6 +1046,7 @@ Object.assign(window, {
   WarningBanner,
   OvertimeModal,
   TimerCard,
+  timerStateFor,
   LiveTranscriptTab,
   WrapUpTab,
   scoreColor,
