@@ -530,46 +530,79 @@ function FUCalendarWeek({ participants, selectedDate }) {
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {participants.map((p) => (
-            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "120px repeat(5, 1fr)", gap: 6, alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                <img src={p.photo} alt={p.name}
-                  style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--zs-line)" }} />
-                <span style={{ fontSize: 11, color: "var(--zs-text-md)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {p.name.split(" ")[0]}
-                </span>
-              </div>
-              {weekDays.map((_, dayIdx) => (
-                <div key={dayIdx} style={{
-                  height: 26, background: "var(--zs-bg-1)", borderRadius: 4,
-                  overflow: "hidden", display: "flex",
-                }}>
-                  {HOURS.map((hour) => {
-                    const busy = isBusy(p.id, dayIdx, hour);
-                    return (
-                      <div key={hour}
-                        title={`${hour}:00 — ${busy ? "Busy" : "Free"}`}
-                        style={{
-                          flex: 1,
-                          borderRight: "1px solid rgba(255,255,255,0.04)",
-                          background: busy ? "rgba(240,68,56,0.36)" : "rgba(23,178,106,0.18)",
-                        }} />
-                    );
-                  })}
+          {participants.map((p) => {
+            const noAccess = !p.isInternal;
+            return (
+              <div key={p.id} style={{ display: "grid", gridTemplateColumns: "120px repeat(5, 1fr)", gap: 6, alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                  <img src={p.photo} alt={p.name}
+                    style={{
+                      width: 22, height: 22, borderRadius: "50%", objectFit: "cover",
+                      border: "1px solid var(--zs-line)",
+                      filter: noAccess ? "grayscale(0.6)" : undefined,
+                      opacity: noAccess ? 0.85 : 1,
+                    }} />
+                  <span style={{
+                    fontSize: 11,
+                    color: noAccess ? "var(--zs-text-lo)" : "var(--zs-text-md)",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
+                    {p.name.split(" ")[0]}
+                  </span>
                 </div>
-              ))}
-            </div>
-          ))}
+                {weekDays.map((_, dayIdx) => (
+                  <div key={dayIdx} style={{
+                    height: 26, background: "var(--zs-bg-1)", borderRadius: 4,
+                    overflow: "hidden", display: "flex",
+                    position: "relative",
+                  }}>
+                    {noAccess ? (
+                      <div title="No calendar access — external participant"
+                        style={{
+                          flex: 1, height: "100%",
+                          background: "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 5px, rgba(255,255,255,0.10) 5px 10px)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 9, fontWeight: 700,
+                          color: "var(--zs-text-lo)",
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                        }}>
+                        No access
+                      </div>
+                    ) : HOURS.map((hour) => {
+                      const busy = isBusy(p.id, dayIdx, hour);
+                      return (
+                        <div key={hour}
+                          title={`${hour}:00 — ${busy ? "Busy" : "Free"}`}
+                          style={{
+                            flex: 1,
+                            borderRight: "1px solid rgba(255,255,255,0.04)",
+                            background: busy ? "rgba(240,68,56,0.36)" : "rgba(23,178,106,0.18)",
+                          }} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
         <div style={{
           marginTop: 10, display: "flex", alignItems: "center", gap: 14,
-          fontSize: 11, color: "var(--zs-text-lo)",
+          fontSize: 11, color: "var(--zs-text-lo)", flexWrap: "wrap",
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 12, height: 12, background: "rgba(23,178,106,0.3)", borderRadius: 3 }} />Free
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 12, height: 12, background: "rgba(240,68,56,0.4)", borderRadius: 3 }} />Busy
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              width: 12, height: 12, borderRadius: 3,
+              background: "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 3px, rgba(255,255,255,0.15) 3px 6px)",
+            }} />
+            External · no calendar access
           </span>
           <span style={{ marginLeft: "auto" }}>9 AM – 5 PM</span>
         </div>

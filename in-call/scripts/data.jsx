@@ -197,13 +197,14 @@ const ZS_FOLLOWUP_TRIGGER_PHRASE = "Let's schedule a follow-up Friday to lock th
 const ZS_FOLLOWUP_TRIGGER_INDEX = 2; // after the 3rd line is fully streamed
 
 const ZS_FOLLOWUP_PARTICIPANTS = [
-  // Mirrors ZS_PEOPLE — but with isInternal/timezone/email needed by the flow.
-  // Neriya is flagged as external (@partner.io) to surface the External tag.
-  { id: "me",     name: "Ofir Even-Zur", email: "ofir@company.com",  isInternal: true,  isOriginalInvitee: true, isCurrentAttendee: true,  timezone: "Asia/Jerusalem",      photo: "../assets/avatars/ofir.png" },
-  { id: "eitan",  name: "Eitan Dror",    email: "eitan@company.com", isInternal: true,  isOriginalInvitee: true, isCurrentAttendee: true,  timezone: "Asia/Jerusalem",      photo: "../assets/avatars/eitan.png" },
-  { id: "idan",   name: "Idan Grof",     email: "idan@company.com",  isInternal: true,  isOriginalInvitee: true, isCurrentAttendee: true,  timezone: "Europe/London",       photo: "../assets/avatars/idan.png" },
-  { id: "neriya", name: "Neriya Amar",   email: "neriya@partner.io", isInternal: false, isOriginalInvitee: false, isCurrentAttendee: true, timezone: "America/New_York",    photo: "../assets/avatars/neriya.png" },
-  { id: "tal",    name: "Tal Shulman",   email: "tal@company.com",   isInternal: true,  isOriginalInvitee: true, isCurrentAttendee: true,  timezone: "Asia/Jerusalem",      photo: "../assets/avatars/tal.png" },
+  // Mirrors ZS_PEOPLE — internal company team plus any externals added later
+  // (e.g. PGO-5 reviewer Uri). External rows have no calendar access, so
+  // their availability is rendered as "no access" (gray) in CalendarWeek.
+  { id: "me",     name: "Ofir Even-Zur", email: "ofir@company.com",   isInternal: true,  isOriginalInvitee: true,  isCurrentAttendee: true, timezone: "Asia/Jerusalem", photo: "../assets/avatars/ofir.png" },
+  { id: "eitan",  name: "Eitan Dror",    email: "eitan@company.com",  isInternal: true,  isOriginalInvitee: true,  isCurrentAttendee: true, timezone: "Asia/Jerusalem", photo: "../assets/avatars/eitan.png" },
+  { id: "idan",   name: "Idan Grof",     email: "idan@company.com",   isInternal: true,  isOriginalInvitee: true,  isCurrentAttendee: true, timezone: "Asia/Jerusalem", photo: "../assets/avatars/idan.png" },
+  { id: "neriya", name: "Neriya Amar",   email: "neriya@company.com", isInternal: true,  isOriginalInvitee: true,  isCurrentAttendee: true, timezone: "Asia/Jerusalem", photo: "../assets/avatars/neriya.png" },
+  { id: "tal",    name: "Tal Shulman",   email: "tal@company.com",    isInternal: true,  isOriginalInvitee: true,  isCurrentAttendee: true, timezone: "Asia/Jerusalem", photo: "../assets/avatars/tal.png" },
 ];
 
 const ZS_FOLLOWUP_INTENT = {
