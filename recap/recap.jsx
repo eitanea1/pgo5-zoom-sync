@@ -498,9 +498,12 @@ function RecapApp() {
       myPending: [],
       teamPending: [],
       unassigned: [],
+      dismissed: [],
       followUp: null,
     };
   }, []);
+
+  const dismissedRaw = data.dismissed || [];
 
   const [doneIds, setDoneIds] = useState(new Set());
   // assignments: Map<taskId, ownerId> — tracks late assignments made in the
@@ -524,24 +527,30 @@ function RecapApp() {
   //   • assignment override === "me"  → Your tasks to close
   //   • override is a teammate         → Team pending
   //   • override is null               → Unassigned
+  //   • dismissed task with override   → revived into the appropriate bucket
   // For Sent tasks, the owner display updates in place — the task stays
   // in "Sent during the meeting" since it was already routed.
   const effectiveOwner = (t) =>
     assignments[t.id] !== undefined ? assignments[t.id] : t.owner;
   const enrichOwner = (t) =>
     assignments[t.id] !== undefined ? { ...t, owner: assignments[t.id] } : t;
+  const isRevived = (t) => assignments[t.id] !== undefined;
 
-  const allPending = [...data.myPending, ...data.teamPending, ...data.unassigned];
-  const visibleMyPending = allPending
+  // Dismissed tasks live in their own bucket UNTIL they're revived (assigned).
+  const visibleDismissed = dismissedRaw.filter((t) => !isRevived(t));
+  const revivedDismissed = dismissedRaw.filter(isRevived);
+
+  const allWorkable = [...data.myPending, ...data.teamPending, ...data.unassigned, ...revivedDismissed];
+  const visibleMyPending = allWorkable
     .filter((t) => effectiveOwner(t) === "me")
     .map(enrichOwner);
-  const visibleTeamPending = allPending
+  const visibleTeamPending = allWorkable
     .filter((t) => {
       const o = effectiveOwner(t);
       return o && o !== "me";
     })
     .map(enrichOwner);
-  const visibleUnassigned = allPending
+  const visibleUnassigned = allWorkable
     .filter((t) => !effectiveOwner(t));
   const visibleAccepted = data.accepted.map(enrichOwner);
 
@@ -603,6 +612,18 @@ function RecapApp() {
           doneIds={doneIds}
           toggleDone={toggleDone}
           emptyText="No team tasks pending."
+        />
+
+        <TasksSection
+          title="Dismissed"
+          sub="You waved these off during the meeting. Reassign one if you change your mind."
+          tasks={visibleDismissed}
+          doneIds={doneIds}
+          toggleDone={toggleDone}
+          emptyText="Nothing was dismissed."
+          assignable={true}
+          onAssign={assignTask}
+          hideCheckbox={true}
         />
 
         <FollowUpSection

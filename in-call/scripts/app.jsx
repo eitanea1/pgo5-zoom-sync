@@ -628,6 +628,7 @@ function HostApp({ t, setTweak }) {
     syncTab: "tasks",
     tasks: [],
     acceptedTasks: [],
+    dismissedTasks: [],   // tasks the host explicitly dismissed — surfaced in recap so they can be revived
     newestTaskId: null,
     toast: null,
     sentToast: null,
@@ -788,16 +789,15 @@ function HostApp({ t, setTweak }) {
   //     it. Trigger is set to 'unattributed' so the attribution chip shows
   //     '{Speaker} raised it' instead of '{Speaker} asked' (semantically
   //     correct now that no specific person owns it).
+  // Dismiss = "I disagree with this task." We still keep a record of it so
+  // the host can revive it from the recap if they change their mind.
   const dismissTask = (id) => setState((s) => {
     const task = s.tasks.find((x) => x.id === id);
     if (!task) return s;
-    if (task.owner == null) {
-      return { ...s, tasks: s.tasks.filter((x) => x.id !== id) };
-    }
     return {
       ...s,
-      tasks: s.tasks.map((x) => (x.id === id ? { ...x, owner: null, trigger: "unattributed" } : x)),
-      newestTaskId: id,
+      tasks: s.tasks.filter((x) => x.id !== id),
+      dismissedTasks: [{ ...task, dismissedAt: Date.now() }, ...s.dismissedTasks],
     };
   });
   // Accept-as-mine: claim an unassigned task to the current user (me).
@@ -856,6 +856,7 @@ function HostApp({ t, setTweak }) {
         wrappedUp: !overtime.isOvertime || overtime.score >= 90,
         // Tasks split into the same buckets the panel uses
         accepted: s.acceptedTasks,
+        dismissed: s.dismissedTasks,
         myPending: s.tasks.filter((x) => x.owner === "me" && !x.departing),
         teamPending: s.tasks.filter((x) => x.owner != null && x.owner !== "me" && !x.departing),
         unassigned: s.tasks.filter((x) => x.owner == null && !x.departing),
