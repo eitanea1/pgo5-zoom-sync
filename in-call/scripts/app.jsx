@@ -36,13 +36,9 @@ function SyncPanel({
   const followUpBadgeNum = followUp.phase === "detected" ? 1 : null;
 
   return (
-    <aside className="zs-panel zs-scroll"
+    <aside className={`zs-panel zs-scroll${inWrapWindow ? " zs-panel--lightmode" : ""}`}
       style={{
         width: "var(--zs-panel-w)", flex: "none", height: "100%",
-        backgroundImage: timerState.tint
-          ? `linear-gradient(180deg, ${timerState.tint} 0%, transparent 70%)`
-          : undefined,
-        transition: "background-image 400ms ease",
       }}>
       {/* Panel header — Zoom Sync wordmark */}
       <div className="zs-panel__header">
@@ -691,10 +687,11 @@ function HostApp({ t, setTweak }) {
   }, [overtime.simMinutes, overtime.effectiveEnd, overtime.isOvertime, wrapupWindowMin]);
 
   // When a NEW task lands (toast appears), bring the Sync panel forward
-  // and snap to the Tasks tab so the user sees the capture immediately.
+  // and snap to Tasks → Pending so the user actually sees the capture
+  // (new tasks land Unassigned, which lives under the Pending sub-tab).
   useE(() => {
     if (state.newestTaskId) {
-      setState((s) => ({ ...s, panelOpen: true, syncTab: "tasks" }));
+      setState((s) => ({ ...s, panelOpen: true, syncTab: "tasks", tab: "unassigned" }));
     }
   }, [state.newestTaskId]);
 

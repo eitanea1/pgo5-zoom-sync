@@ -104,6 +104,29 @@
   border-radius: var(--zs-r-lg);
   display: flex;
   flex-direction: column;
+  transition: background-color 480ms ease, border-color 480ms ease, color 480ms ease;
+}
+
+/* Light-mode panel: rebinds tokens within the panel subtree only.
+   Activates during the wrap-up window so the host's wrap-up surface feels
+   lighter / more "summary"-like, while the rest of the meeting stays dark. */
+.zs-panel.zs-panel--lightmode {
+  --zs-bg-0:        #FFFFFF;
+  --zs-bg-1:        #FAFBFC;
+  --zs-bg-2:        #F2F4F7;
+  --zs-bg-3:        #E5E8EB;
+  --zs-bg-4:        #DBDFE5;
+  --zs-line:        rgba(0, 0, 0, 0.08);
+  --zs-line-strong: rgba(0, 0, 0, 0.16);
+  --zs-text-hi:     #131619;
+  --zs-text-md:     #4A4D52;
+  --zs-text-lo:     #747679;
+  --zs-text-dim:    #A4A6AB;
+  --zs-shadow-md:   0 6px 18px rgba(15, 30, 60, 0.10), 0 2px 4px rgba(15, 30, 60, 0.06);
+  --zs-shadow-lg:   0 20px 50px rgba(15, 30, 60, 0.18), 0 4px 10px rgba(15, 30, 60, 0.06);
+  background: var(--zs-bg-1);
+  color: var(--zs-text-hi);
+  border-color: var(--zs-line);
 }
 
 .zs-panel__header {
