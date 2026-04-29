@@ -1137,7 +1137,9 @@ function HostApp({ t, setTweak }) {
       {state.endDialogOpen && (
         <LeaveMeetingDialog
           viewer={ZS_PEOPLE.find((p) => p.id === "me")}
-          pendingTasks={state.tasks.filter((x) => x.owner === "me" && !x.departing)}
+          // Anything Sync captured that hasn't been sent yet is "pending" —
+          // host can still send / dismiss / reassign before walking away.
+          pendingTasks={state.tasks.filter((x) => !x.departing)}
           onCancel={cancelEnd}
           onLeave={confirmEnd}
           onAccept={acceptTask}
