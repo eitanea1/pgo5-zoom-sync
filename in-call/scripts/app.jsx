@@ -518,14 +518,12 @@ function Toolbar({ muted, videoOn, panelOpen, sidePanel, onToggle, onOpenSide, o
    animated green "active speaker" frame on whichever tile is currently
    speaking, mapped to the tile's position within the source image. */
 const TILE_RECTS = {
-  // Manually calibrated against zoom-call-stage.png (1691×858).
-  // Top row: y=80..458 (height 378px). Tiles span x=10..1680 in 3 equal columns.
-  // Bottom row: y=460..798 (height 338px). Two tiles centered, x=260..1460.
-  me:     { left: "0.59%",  top: "9.32%",  width: "32.88%", height: "44.06%" },
-  eitan:  { left: "33.47%", top: "9.32%",  width: "32.88%", height: "44.06%" },
-  idan:   { left: "66.35%", top: "9.32%",  width: "33.00%", height: "44.06%" },
-  neriya: { left: "15.38%", top: "53.61%", width: "35.48%", height: "39.39%" },
-  tal:    { left: "50.86%", top: "53.61%", width: "35.48%", height: "39.39%" },
+  // Calibrated against zoom-call-stage.png (1691×858) by detecting the dark
+  // gaps between tiles in the source image. Bottom row (neriya, tal) is
+  // intentionally omitted — the active-speaker frame is suppressed for them.
+  me:     { left: "0.65%",  top: "9.91%",  width: "33.24%", height: "43.36%" },
+  eitan:  { left: "34.06%", top: "9.91%",  width: "32.76%", height: "43.36%" },
+  idan:   { left: "67.47%", top: "9.91%",  width: "31.81%", height: "43.36%" },
 };
 
 function MeetingGrid({ speakerId, muted, layout, selfId = "me" }) {
@@ -585,9 +583,9 @@ function MeetingGrid({ speakerId, muted, layout, selfId = "me" }) {
             top: `calc(${imgBox.top}px + ${rect.top})`,
             width: `calc(${imgBox.width}px * ${parseFloat(rect.width) / 100})`,
             height: `calc(${imgBox.height}px * ${parseFloat(rect.height) / 100})`,
+            boxSizing: "border-box",
             border: "3px solid #2EBF5A",
             borderRadius: 6,
-            boxShadow: "0 0 0 2px rgba(46,191,90,0.25), 0 0 18px 4px rgba(46,191,90,0.45)",
             pointerEvents: "none",
             transition: "left 280ms ease, top 280ms ease, width 280ms ease, height 280ms ease",
             animation: "zsSpeakerPulse 1.4s ease-in-out infinite",
